@@ -1,0 +1,4 @@
+/home/steven/.local/share/JetBrains/Toolbox/apps/CLion/ch-0/202.7319.72/bin/cmake/linux/bin/cmake -DCMAKE_BUILD_TYPE=Debug -DCMAKE_MAKE_PROGRAM=/usr/bin/make -DCMAKE_C_COMPILER=/usr/bin/gcc -DCMAKE_CXX_COMPILER=/usr/bin/g++ -DCMAKE_TOOLCHAIN_FILE=../Framework/vcpkg-2020.01/scripts/buildsystems/vcpkg.cmake -G "CodeBlocks - Unix Makefiles" /home/steven/Documents/School/MultiCore/A1
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/steven/Documents/School/MultiCore/A1/cmake-build-debug
