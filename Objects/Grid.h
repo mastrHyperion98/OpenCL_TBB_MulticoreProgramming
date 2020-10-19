@@ -11,8 +11,9 @@
 #include "Cell.h"
 #include "glm/glm.hpp"
 #include <mutex>
+#include "tbb/concurrent_vector.h"
 using namespace std;
-
+using namespace tbb;
 
 class Grid {
 private:
@@ -20,12 +21,14 @@ private:
     int numCols;
     GLuint vao = -1;
     GLuint vbo = -1;
-    std::mutex access;
-
+    std::mutex cancerAccess;
+    std::mutex medicalAccess;
+    int numCancer;
+    int numMedical;
+    concurrent_vector<glm::vec3> positionArray;
 public:
     Cell*** matrix;
-    vector<Cell*> cancerList;
-    vector<Cell*> medicineList;
+
     Grid(int, int);
     ~Grid();
     Grid(const Grid &grid);
@@ -34,7 +37,15 @@ public:
     void UpdateVAO();
     void CreateVAO();
     void Draw();
-
+    void IncrementCancer();
+    void DecrementCancer();
+    void DecrementMedical();
+    void RemoveFromMedical(int num);
+    void IncremementMedical();
+    void AddMedical(int num);
+    int getNumCancer();
+    int getNumMedical();
+    int getVaoColorIndex(int i, int j){return 2*((i*numCols)+j)+1;}
 };
 
 

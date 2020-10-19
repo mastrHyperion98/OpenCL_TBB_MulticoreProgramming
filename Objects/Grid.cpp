@@ -3,8 +3,10 @@
 //
 
 #include "Grid.h"
-#include "random"
+#include <random>
 #include <set>
+#include <algorithm>
+
 Grid::Grid(int x, int y){
     numRows = x;
     numCols = y;
@@ -12,9 +14,10 @@ Grid::Grid(int x, int y){
     std::mt19937 rng(dev());
     std::uniform_int_distribution<std::mt19937::result_type> x_rand(0,numRows-1); // dist
     std::uniform_int_distribution<std::mt19937::result_type> y_rand(0,numCols-1); // dist
-    int num_cancer = 0.25f * (numRows * numCols);
+    int num_cancer = 0.50f * (numRows * numCols);
     set<tuple<int,int>> set;
-    cancerList.reserve(num_cancer);
+    numCancer = 0;
+    numMedical=0;
 
     while(set.size() <= num_cancer - 1 ){
         int x1 = x_rand(rng);
@@ -34,7 +37,7 @@ Grid::Grid(int x, int y){
             }
             matrix[i][j] = new Cell(i,j, color);
             if(color == RED)
-                cancerList.push_back(matrix[i][j]);
+                numCancer++;
         }
     }
 }
@@ -62,8 +65,8 @@ Grid::Grid(const Grid &grid){
             matrix[i][j] = new Cell(*grid.matrix[i][j]);
         }
     }
-    cancerList = grid.cancerList;
-    medicineList = grid.medicineList;
+    numMedical = grid.numMedical;
+    numCancer = grid.numCancer;
     vao = grid.vao;
     vbo = grid.vbo;
 }
@@ -80,8 +83,8 @@ Grid & Grid::operator=(const Grid &grid){
             matrix[i][j] = new Cell(*grid.matrix[i][j]);
         }
     }
-    cancerList = grid.cancerList;
-    medicineList = grid.medicineList;
+    numMedical = grid.numMedical;
+    numCancer = grid.numCancer;
     vao = grid.vao;
     vbo = grid.vbo;
 
@@ -90,7 +93,7 @@ Grid & Grid::operator=(const Grid &grid){
 
 void Grid::CreateVAO(){
     // Create a vertex array
-    vector<glm::vec3> positionArray;
+    positionArray.reserve(numRows*numCols*2);
     for(int i = 0; i < numRows; i++){
         for(int j= 0; j < numCols; j++){
             Cell *cell = matrix[i][j];
@@ -130,17 +133,6 @@ void Grid::CreateVAO(){
 
 void Grid::UpdateVAO(){
     // Create a vertex array
-    access.lock();
-    vector<glm::vec3> positionArray;
-    for(int i = 0; i < numRows; i++){
-        for(int j= 0; j < numCols; j++){
-            Cell *cell = matrix[i][j];
-            positionArray.push_back(glm::vec3(cell->getX(), cell->getY(), 0));
-            positionArray.push_back(cell->getColor());
-        }
-    }
-    access.unlock();
-
     glBindVertexArray(vao);
     // Upload Vertex Buffer to the GPU, keep a reference to it (vertexBufferObject)
     glBindBuffer(GL_ARRAY_BUFFER, vbo);
@@ -171,7 +163,58 @@ void Grid::Draw() {
 }
 
 void Grid::UpdateColor(int i , int j , glm::vec3 color) {
-    access.lock();
     matrix[i][j]->setColor(color);
-    access.unlock();
+    positionArray[getVaoColorIndex(i,j)] = color;
+}
+
+void Grid::IncremementMedical() {
+    medicalAccess.lock();
+    numMedical++;
+    medicalAccess.unlock();
+}
+
+void Grid::IncrementCancer() {
+    cancerAccess.lock();
+    numCancer++;
+    cancerAccess.unlock();
+}
+
+void Grid::AddMedical(int num) {
+    medicalAccess.lock();
+    numMedical += num;
+    medicalAccess.unlock();
+}
+
+void Grid::DecrementCancer() {
+    cancerAccess.lock();
+    numCancer--;
+    cancerAccess.unlock();
+}
+
+void Grid::DecrementMedical() {
+    medicalAccess.lock();
+    numMedical--;
+    medicalAccess.unlock();
+}
+
+void Grid::RemoveFromMedical(int num) {
+    medicalAccess.lock();
+    numMedical-=num;
+    medicalAccess.unlock();
+}
+
+int Grid::getNumMedical() {
+    int tmp;
+    medicalAccess.lock();
+    tmp = numMedical;
+    medicalAccess.unlock();
+    return tmp;
+}
+
+int Grid::getNumCancer() {
+    int tmp;
+    cancerAccess.lock();
+    tmp = numCancer;
+    cancerAccess.unlock();
+    return tmp;
 }
