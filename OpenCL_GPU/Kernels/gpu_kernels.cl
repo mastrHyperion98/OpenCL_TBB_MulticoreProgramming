@@ -229,6 +229,7 @@ void kernel cancer_check(global const float3 *vectorArray,
    const int MUTATION_THRESHOLD_EDGE = 4;
    const float3 YELLOW = (float3)(1.0f,1.0f,0.0f);
    const float3 GREEN = (float3)(0.0f,0.0,0.4f);
+   const float3 RED = (float3)(1.0f,0.0f,0.0f);
    int i = get_global_id(0);
    int j = get_global_id(1);
    float3 color;
@@ -316,21 +317,22 @@ void kernel cancer_check(global const float3 *vectorArray,
         }
         if (numberMedical >= MUTATION_THRESHOLD_CORNER) {
             color = vectorArray[2*(((i)*Y_MAX)+(j))+1];
-            if(!(color.x == 1 && color.y == 0)){
+            if(color.x == RED.x && color.y == RED.y){
                numberCancerResult = atomic_dec(numberCancerResult);
                vectorArrayResult[2*(((i)*Y_MAX)+(j))+1] = GREEN;
+   
                for(int index = 0; index < bufferIndex; index++){
                   int x = medCellsBuffer[index].x;
                   int y = medCellsBuffer[index].y;
-                  /* return color to green for all consumed medical cells */
                   vectorArrayResult[2*(((x)*Y_MAX)+(y))+1] = GREEN;
-                  numberMedicalResult = atomic_dec(numberMedicalResult);
                }
+                  numberMedicalResult = atomic_sub(numberMedicalResult, numberMedical);
             }
         }else{
             vectorArrayResult[2*(((i)*Y_MAX)+(j))+1] = vectorArray[2*(((i)*Y_MAX)+(j))+1];
         }
-   } else if (i == 0 || i == X_MAX || j == 0 || j == Y_MAX) {
+   } 
+   else if (i == 0 || i == X_MAX || j == 0 || j == Y_MAX) {
         /* only four options is left, bottom, right or top */
         if (j == 0) {
             color = vectorArray[2*(((i-1)*Y_MAX)+(j))+1];
@@ -460,21 +462,22 @@ void kernel cancer_check(global const float3 *vectorArray,
 
         if (numberMedical >= MUTATION_THRESHOLD_EDGE) {
            color = vectorArray[2*(((i)*Y_MAX)+(j))+1];
-            if(!(color.x == 1 && color.y == 0)){
+            if(color.x == RED.x && color.y == RED.y){
                numberCancerResult = atomic_dec(numberCancerResult);
                vectorArrayResult[2*(((i)*Y_MAX)+(j))+1] = GREEN;
+
                for(int index = 0; index < bufferIndex; index++){
                   int x = medCellsBuffer[index].x;
                   int y = medCellsBuffer[index].y;
-                  /* return color to green for all consumed medical cells */
                   vectorArrayResult[2*(((x)*Y_MAX)+(y))+1] = GREEN;
-                  numberMedicalResult = atomic_dec(numberMedicalResult);
                }
+                  numberMedicalResult = atomic_sub(numberMedicalResult, numberMedical);
             }
         }else{
             vectorArrayResult[2*(((i)*Y_MAX)+(j))+1] = vectorArray[2*(((i)*Y_MAX)+(j))+1];
         }
-    }else {
+   }
+    else {
         color = vectorArray[2*(((i)*Y_MAX)+(j-1))+1];
         if (color.y == YELLOW.y){
             numberMedical++;
@@ -533,19 +536,19 @@ void kernel cancer_check(global const float3 *vectorArray,
 
         if (numberMedical >= MUTATION_THRESHOLD) {
            color = vectorArray[2*(((i)*Y_MAX)+(j))+1];
-            if(!(color.x == 1 && color.y == 0)){
+            if(color.x == RED.x && color.y == RED.y){
                numberCancerResult = atomic_dec(numberCancerResult);
                vectorArrayResult[2*(((i)*Y_MAX)+(j))+1] = GREEN;
+
                for(int index = 0; index < bufferIndex; index++){
                   int x = medCellsBuffer[index].x;
                   int y = medCellsBuffer[index].y;
-                  /* return color to green for all consumed medical cells */
                   vectorArrayResult[2*(((x)*Y_MAX)+(y))+1] = GREEN;
-                  numberMedicalResult = atomic_dec(numberMedicalResult);
                }
+                  numberMedicalResult = atomic_sub(numberMedicalResult, numberMedical);
             }
         }else{
             vectorArrayResult[2*(((i)*Y_MAX)+(j))+1] = vectorArray[2*(((i)*Y_MAX)+(j))+1];
-        }
-    }  
+      }
+   }  
 }

@@ -396,7 +396,8 @@ void Injection(){
                 }
             }
         }
-    } else {
+    }
+    else {
         // else regular threshold
         // all other regular stuff -- here
         // check up
@@ -684,7 +685,8 @@ int main() {
         Renderer::BeginFrame();
         // set the color
         if(timer >= REFRESH_TIME) {
-            //Injection();
+            CellUpdate & task = *new(task::allocate_root())CellUpdate();
+            task::spawn_root_and_wait(task);
             cl::Buffer buffer_vectorArray(context,CL_MEM_READ_WRITE,sizeof(cl_float3)*SIZE);
             cl::Buffer buffer_numberCancer(context,CL_MEM_READ_WRITE,sizeof(int));
             cl::Buffer buffer_numberMedical(context,CL_MEM_READ_WRITE,sizeof(int));
@@ -712,6 +714,7 @@ int main() {
             cancer_check.setArg(4, buffer_numberCancer);
             cancer_check.setArg(5, buffer_vectorArray);
             queue.enqueueNDRangeKernel(cancer_check,cl::NullRange,cl::NDRange(X_MAX, Y_MAX),cl::NullRange, NULL, &events[1]);
+            events[1].wait();
             queue.finish();
             queue.enqueueReadBuffer(buffer_vectorArray,CL_TRUE,0,sizeof(cl_float3)*SIZE,grid->vectorArray);
             queue.enqueueReadBuffer(buffer_numberCancer,CL_TRUE,0,sizeof(int)*1,grid->numCancer);
