@@ -691,15 +691,20 @@ int main() {
             cl::Buffer buffer_numberCancer(context,CL_MEM_READ_WRITE,sizeof(int));
             cl::Buffer buffer_numberMedical(context,CL_MEM_READ_WRITE,sizeof(int));
             cl::Buffer bufferResult(context, CL_MEM_READ_WRITE, sizeof(cl_float3) * SIZE);
+            cl::Buffer bufferDirection(context, CL_MEM_READ_WRITE, sizeof(int) * (Y_MAX*X_MAX));
+            cl::Buffer bufferDirectionResult(context, CL_MEM_READ_WRITE, sizeof(int) * (Y_MAX*X_MAX));
             //write arrays A and B to the device
             queue.enqueueWriteBuffer(buffer_vectorArray,CL_TRUE,0,sizeof(cl_float3)*SIZE, grid->vectorArray);
             queue.enqueueWriteBuffer(buffer_numberCancer,CL_TRUE,0,sizeof(int)*1, grid->numCancer);
             queue.enqueueWriteBuffer(buffer_numberMedical,CL_TRUE,0,sizeof(int)*1, grid->numMedical);
             queue.enqueueWriteBuffer(bufferResult,CL_TRUE,0,sizeof(cl_float3)*SIZE, grid->vectorArray);
-            cl::Event events[2];
+            queue.enqueueWriteBuffer(bufferDirection, CL_TRUE, 0, sizeof(int)*(Y_MAX*X_MAX), grid->directions);
+            queue.enqueueWriteBuffer(bufferDirectionResult, CL_TRUE, 0, sizeof(int)*(Y_MAX*X_MAX), grid->directions);
+            cl::Event events[3];
             //alternative way to run the kernel
             cl::Kernel healthy_check=cl::Kernel(program,"healthy_check");
             cl::Kernel cancer_check=cl::Kernel(program,"cancer_check");
+            cl::Kernel radial_expansion=cl::Kernel(program,"radial_expansion");
             healthy_check.setArg(0,buffer_vectorArray);
             healthy_check.setArg(1, X_MAX);
             healthy_check.setArg(2, Y_MAX);
@@ -715,10 +720,21 @@ int main() {
             cancer_check.setArg(5, buffer_vectorArray);
             queue.enqueueNDRangeKernel(cancer_check,cl::NullRange,cl::NDRange(X_MAX, Y_MAX),cl::NullRange, NULL, &events[1]);
             events[1].wait();
+            radial_expansion.setArg(0, buffer_vectorArray);
+            radial_expansion.setArg(1, bufferDirection);
+            radial_expansion.setArg(2,X_MAX);
+            radial_expansion.setArg(3, Y_MAX);
+            radial_expansion.setArg(4, buffer_numberMedical);
+            radial_expansion.setArg(5, buffer_numberCancer);
+            radial_expansion.setArg(6, bufferDirectionResult);
+            radial_expansion.setArg(7, bufferResult);
+            queue.enqueueNDRangeKernel(radial_expansion,cl::NullRange,cl::NDRange(X_MAX, Y_MAX),cl::NullRange, NULL, &events[2]);
+            events[2].wait();
             queue.finish();
-            queue.enqueueReadBuffer(buffer_vectorArray,CL_TRUE,0,sizeof(cl_float3)*SIZE,grid->vectorArray);
+            queue.enqueueReadBuffer(bufferResult,CL_TRUE,0,sizeof(cl_float3)*SIZE,grid->vectorArray);
             queue.enqueueReadBuffer(buffer_numberCancer,CL_TRUE,0,sizeof(int)*1,grid->numCancer);
             queue.enqueueReadBuffer(buffer_numberMedical,CL_TRUE,0,sizeof(int)*1,grid->numMedical);
+            queue.enqueueReadBuffer(bufferDirectionResult, CL_TRUE, 0, sizeof(int)*(Y_MAX*X_MAX), grid->directions);
             grid->UpdateVAO();
             cout << "\nCancer Cells: " << grid->getNumCancer()<< endl;
             cout << "Medical Cells: " << grid->getNumMedical() << endl;
