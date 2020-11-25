@@ -4,16 +4,12 @@
 #include "GL/glew.h"   // Include GLEW - OpenGL Extension Wrangler
 #include "GLFW/glfw3.h" // GLFW provides a cross-platform interface for creating a graphical context,
 // initializing OpenGL and binding inputs
-// Import glm
-#include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp" // include this to create transformation matrices
 #include "Framework/WindowManager.h"
 #include "Framework/Renderer.h"
-#include <thread>
 #include "random"
 #include "Objects/Grid.h"
 #include <deque>
-#include "tbb/task.h"
 #include "Framework/CL_Tools.h"
 
 #define SCREEN_WIDTH 1024.0f
@@ -22,8 +18,6 @@
 #define PROGRAM "../Kernels/gpu_kernels.cl"
 
 using namespace std;
-using namespace glm;
-using namespace tbb;
 
 Grid *grid = new Grid(SCREEN_WIDTH, SCREEN_HEIGHT);
 int const MUTATION_THRESHOLD = 6; // errors in slide
@@ -490,175 +484,13 @@ void Injection(){
     }
 }
 
-
-void MedicineRadialExpansion(int x, int y, int dir){
-    if(dir == UP){
-        if(y > 0){
-            int index = 2*((x*Y_MAX)+(y-1));
-            if(grid->float3Equal(grid->vectorArray[index+1], RED))
-                grid->DecrementCancer();
-            grid->UpdateColor(x, y-1, YELLOW);
-            grid->directions[(x*Y_MAX)+(y-1)] = UP;
-        }else {
-            grid->DecrementMedical();
-        }
-        grid->UpdateColor(x,y, GREEN);
-    }
-    else if(dir == UP_RIGHT){
-        if(x < X_MAX && y > 0){
-            int index = 2*(((x+1)*Y_MAX)+(y-1));
-            if(grid->float3Equal(grid->vectorArray[index+1], RED))
-                grid->DecrementCancer();
-            grid->UpdateColor(x+1, y-1, YELLOW);
-            grid->directions[((x+1)*Y_MAX)+(y-1)] = UP_RIGHT;
-        }else {
-            grid->DecrementMedical();
-        }
-        grid->UpdateColor(x,y, GREEN);
-    }
-    else if(dir == UP_LEFT){
-        if(x > 0 && y > 0){
-            int index = 2*(((x-1)*Y_MAX)+(y-1));
-            if(grid->float3Equal(grid->vectorArray[index+1], RED))
-                grid->DecrementCancer();
-            grid->UpdateColor(x-1, y-1, YELLOW);
-            grid->directions[((x-1)*Y_MAX)+(y-1)] = UP_LEFT;
-        }else {
-            grid->DecrementMedical();
-        }
-        grid->UpdateColor(x,y, GREEN);
-    }
-    else if(dir == RIGHT){
-        if(x < X_MAX){
-            int index = 2*(((x+1)*Y_MAX)+(y));
-            if(grid->float3Equal(grid->vectorArray[index+1],RED))
-                grid->DecrementCancer();
-            grid->UpdateColor(x+1, y, YELLOW);
-            grid->directions[((x+1)*Y_MAX)+y] = RIGHT;
-        }else {
-            grid->DecrementMedical();
-        }
-        grid->UpdateColor(x,y, GREEN);
-    }
-    else if(dir == LEFT){
-        if(x > 0){
-            int index = 2*(((x-1)*Y_MAX)+(y));
-            if(grid->float3Equal(grid->vectorArray[index+1], RED))
-                grid->DecrementCancer();
-            grid->UpdateColor(x-1, y, YELLOW);
-            grid->directions[((x-1)*Y_MAX)+y] = LEFT;
-        }else {
-            grid->DecrementMedical();
-        }
-        grid->UpdateColor(x,y, GREEN);
-    }
-    else if(dir == DOWN){
-        if(y < Y_MAX){
-            int index = 2*(((x)*Y_MAX)+(y+1));
-            if(grid->float3Equal(grid->vectorArray[index+1], RED))
-                grid->DecrementCancer();
-            grid->UpdateColor(x, y+1, YELLOW);
-            grid->directions[(x*Y_MAX) + (y+1)] = DOWN;
-        }else {
-            grid->DecrementMedical();
-        }
-        grid->UpdateColor(x,y, GREEN);
-    }
-    else if(dir == DOWN_RIGHT){
-        if(x < X_MAX && y < Y_MAX){
-            int index = 2*(((x+1)*Y_MAX)+(y+1));
-            if(grid->float3Equal(grid->vectorArray[index+1], RED))
-                grid->DecrementCancer();
-            grid->UpdateColor(x+1, y+1, YELLOW);
-            grid->directions[((x+1)*Y_MAX) + (y+1)] = DOWN_RIGHT;
-        }else {
-            grid->DecrementMedical();
-        }
-        grid->UpdateColor(x,y, GREEN);
-    }
-    else if(dir == DOWN_LEFT){
-        if(x >0 && y < Y_MAX){
-            int index = 2*(((x-1)*Y_MAX)+(y+1));
-            if(grid->float3Equal(grid->vectorArray[index+1], RED))
-                grid->DecrementCancer();
-            grid->UpdateColor(x-1, y+1, YELLOW);
-            grid->directions[((x-1)*Y_MAX)+(y+1)] = DOWN_LEFT;
-        }else {
-            grid->DecrementMedical();
-        }
-        grid->UpdateColor(x,y, GREEN);
-    }
-}
-/*
-class MutationCheckTask: public task{
-public:
-    int start;
-    int end;
-    MutationCheckTask(int start_, int end_){
-        start=start_;
-        end = end_;
-    }
-    MutationCheckTask(){
-        start=0;
-        end = 0;
-    }
-    task* execute(){
-        deque<cl_float3> medCells;
-        // traverse every cell one by one and check for mutation....if color is red skip.
-        for(int i = start; i <= end; i++){
-            for(int j = 0; j <= Y_MAX; j++){
-                int colorIndex = grid->getVaoColorIndex(i,j);
-                cl_float3 color = grid->vectorArray[colorIndex];
-                if(color.x== RED.x && color.y == RED.y && color.z == RED.z){
-                    CancerCheck(i,j);
-                }
-                else if(color.x == GREEN.x && color.y == GREEN.y && color.z == GREEN.z){
-                     HealthyCheck(i,j);
-                }
-                else{
-                    medCells.push_back(grid->vectorArray[colorIndex-1]);
-                }
-            }
-        }
-        while(!medCells.empty()){
-            cl_float3 cell = medCells.front();
-            int x = cell.x;
-            int y = cell.y;
-            int direction = grid->directions[(x*Y_MAX)+y];
-            MedicineRadialExpansion(x, y, direction);
-            medCells.pop_front();
-        }
-    }
-};
-
-*/
-class CellInjectionTask: public task{
-public:
-    CellInjectionTask(){
-    }
-    task * execute(){
-        Injection();
-    }
-};
-
-class CellUpdate:public task{
-public:
-    CellUpdate(){
-
-    }
-    task * execute(){
-        set_ref_count(3);
-        CellInjectionTask & task = *new(allocate_child())CellInjectionTask();
-        CellInjectionTask & task2 = *new(allocate_child())CellInjectionTask();
-        spawn(task);
-        spawn(task2);
-        wait_for_all();
-    }
-};
 int main() {
     // WindowManager and Renderer are classes from my Comp 371 Project that I am re-using here for quick startup/clean code.
     // Both of these classes were written/converted by me and I can prove it through GitHub if necessary!
     // Shader.h is borrowed from LearnOpenGL.com
+    std::vector<cl::Platform> platforms;
+    cl::Platform::get(&platforms);
+
     float const REFRESH_TIME = 1/30.0f;
     int const SIZE = (Y_MAX*X_MAX*2);
     WindowManager::Initialize("Multicore Assignment1", SCREEN_WIDTH*POINT_SIZE, SCREEN_HEIGHT*POINT_SIZE);
@@ -668,15 +500,33 @@ int main() {
     Renderer::setRenderMode(GL_POINTS);
     Renderer::useShader(0);
 
-    cl::Platform default_platform=GetDefaultPlatform();
-    cl::Device default_device= GetDefaultDevice(&default_platform);
-    cl::Context context({default_device});
-    cl::Program program = buildProgram(context, default_device, PROGRAM);
+    cl::Device gpu= GetDeviceTarget(CL_DEVICE_TYPE_GPU);
+    cl::Context context = cl::Context(gpu);
+    cl::Program program = buildProgram(context, gpu, PROGRAM);
     //create queue to which we will push commands for the device.
-    cl::CommandQueue queue(context,default_device);
+    cl::CommandQueue queue(context,gpu);
 
     glm::mat4 projection = glm::ortho(0.0f, SCREEN_WIDTH*POINT_SIZE, SCREEN_HEIGHT*POINT_SIZE, 0.0f, -1.0f, 1.0f);
     Renderer::getCurrentShader()->setMat4("orthoMatrix", projection);
+    cl::Buffer buffer_vectorArray(context,CL_MEM_READ_WRITE,sizeof(cl_float3)*SIZE);
+    cl::Buffer buffer_numberCancer(context,CL_MEM_READ_WRITE,sizeof(int));
+    cl::Buffer buffer_numberMedical(context,CL_MEM_READ_WRITE,sizeof(int));
+    cl::Buffer bufferResult(context, CL_MEM_READ_WRITE, sizeof(cl_float3) * SIZE);
+    cl::Buffer bufferDirection(context, CL_MEM_READ_WRITE, sizeof(int) * (Y_MAX*X_MAX));
+    cl::Buffer bufferDirectionResult(context, CL_MEM_READ_WRITE, sizeof(int) * (Y_MAX*X_MAX));
+    queue.enqueueWriteBuffer(bufferDirectionResult, CL_TRUE, 0, sizeof(int)*(Y_MAX*X_MAX), grid->directions);
+    queue.enqueueWriteBuffer(bufferResult,CL_TRUE,0,sizeof(cl_float3)*SIZE, grid->vectorArray);
+    queue.enqueueWriteBuffer(buffer_numberCancer,CL_TRUE,0,sizeof(int)*1, grid->numCancer);
+    queue.enqueueWriteBuffer(buffer_vectorArray,CL_TRUE,0,sizeof(cl_float3)*SIZE, grid->vectorArray);
+    queue.enqueueWriteBuffer(buffer_numberMedical,CL_TRUE,0,sizeof(int)*1, grid->numMedical);
+    cl::Kernel mutation=cl::Kernel(program,"mutation_kernel");
+    //cl::Kernel cancer_check=cl::Kernel(program,"cancer_check");
+    //cl::Kernel radial_expansion=cl::Kernel(program,"radial_expansion");
+    mutation.setArg(0,buffer_vectorArray);
+    mutation.setArg(1, X_MAX);
+    mutation.setArg(2, Y_MAX);
+    mutation.setArg(3,buffer_numberCancer);
+    mutation.setArg(4,buffer_numberMedical);
     grid->CreateVAO();
     float timer=0;
    do{
@@ -685,56 +535,12 @@ int main() {
         Renderer::BeginFrame();
         // set the color
         if(timer >= REFRESH_TIME) {
-            CellUpdate & task = *new(task::allocate_root())CellUpdate();
-            task::spawn_root_and_wait(task);
-            cl::Buffer buffer_vectorArray(context,CL_MEM_READ_WRITE,sizeof(cl_float3)*SIZE);
-            cl::Buffer buffer_numberCancer(context,CL_MEM_READ_WRITE,sizeof(int));
-            cl::Buffer buffer_numberMedical(context,CL_MEM_READ_WRITE,sizeof(int));
-            cl::Buffer bufferResult(context, CL_MEM_READ_WRITE, sizeof(cl_float3) * SIZE);
-            cl::Buffer bufferDirection(context, CL_MEM_READ_WRITE, sizeof(int) * (Y_MAX*X_MAX));
-            cl::Buffer bufferDirectionResult(context, CL_MEM_READ_WRITE, sizeof(int) * (Y_MAX*X_MAX));
-            //write arrays A and B to the device
-            queue.enqueueWriteBuffer(buffer_vectorArray,CL_TRUE,0,sizeof(cl_float3)*SIZE, grid->vectorArray);
-            queue.enqueueWriteBuffer(buffer_numberCancer,CL_TRUE,0,sizeof(int)*1, grid->numCancer);
-            queue.enqueueWriteBuffer(buffer_numberMedical,CL_TRUE,0,sizeof(int)*1, grid->numMedical);
-            queue.enqueueWriteBuffer(bufferResult,CL_TRUE,0,sizeof(cl_float3)*SIZE, grid->vectorArray);
-            queue.enqueueWriteBuffer(bufferDirection, CL_TRUE, 0, sizeof(int)*(Y_MAX*X_MAX), grid->directions);
-            queue.enqueueWriteBuffer(bufferDirectionResult, CL_TRUE, 0, sizeof(int)*(Y_MAX*X_MAX), grid->directions);
-            cl::Event events[3];
-            //alternative way to run the kernel
-            cl::Kernel healthy_check=cl::Kernel(program,"healthy_check");
-            cl::Kernel cancer_check=cl::Kernel(program,"cancer_check");
-            cl::Kernel radial_expansion=cl::Kernel(program,"radial_expansion");
-            healthy_check.setArg(0,buffer_vectorArray);
-            healthy_check.setArg(1, X_MAX);
-            healthy_check.setArg(2, Y_MAX);
-            healthy_check.setArg(3,buffer_numberCancer);
-            healthy_check.setArg(4,bufferResult);
-            queue.enqueueNDRangeKernel(healthy_check,cl::NullRange,cl::NDRange(X_MAX, Y_MAX),cl::NullRange, NULL, &events[0]);
-            events[0].wait();
-            cancer_check.setArg(0,bufferResult);
-            cancer_check.setArg(1, X_MAX);
-            cancer_check.setArg(2, Y_MAX);
-            cancer_check.setArg(3,buffer_numberMedical);
-            cancer_check.setArg(4, buffer_numberCancer);
-            cancer_check.setArg(5, buffer_vectorArray);
-            queue.enqueueNDRangeKernel(cancer_check,cl::NullRange,cl::NDRange(X_MAX, Y_MAX),cl::NullRange, NULL, &events[1]);
-            events[1].wait();
-            radial_expansion.setArg(0, buffer_vectorArray);
-            radial_expansion.setArg(1, bufferDirection);
-            radial_expansion.setArg(2,X_MAX);
-            radial_expansion.setArg(3, Y_MAX);
-            radial_expansion.setArg(4, buffer_numberMedical);
-            radial_expansion.setArg(5, buffer_numberCancer);
-            radial_expansion.setArg(6, bufferDirectionResult);
-            radial_expansion.setArg(7, bufferResult);
-            queue.enqueueNDRangeKernel(radial_expansion,cl::NullRange,cl::NDRange(X_MAX, Y_MAX),cl::NullRange, NULL, &events[2]);
-            events[2].wait();
+            //queue.enqueueWriteBuffer(bufferDirection, CL_TRUE, 0, sizeof(int)*(Y_MAX*X_MAX), grid->directions);
+            queue.enqueueNDRangeKernel(mutation,cl::NullRange,cl::NDRange(X_MAX, Y_MAX),cl::NullRange);
             queue.finish();
-            queue.enqueueReadBuffer(bufferResult,CL_TRUE,0,sizeof(cl_float3)*SIZE,grid->vectorArray);
-            queue.enqueueReadBuffer(buffer_numberCancer,CL_TRUE,0,sizeof(int)*1,grid->numCancer);
-            queue.enqueueReadBuffer(buffer_numberMedical,CL_TRUE,0,sizeof(int)*1,grid->numMedical);
-            queue.enqueueReadBuffer(bufferDirectionResult, CL_TRUE, 0, sizeof(int)*(Y_MAX*X_MAX), grid->directions);
+            queue.enqueueReadBuffer(buffer_vectorArray,CL_TRUE,0,sizeof(cl_float3)*SIZE,grid->vectorArray);
+            queue.enqueueReadBuffer(buffer_numberCancer, CL_TRUE, 0, sizeof(int), grid->numCancer);
+            queue.enqueueReadBuffer(buffer_numberMedical, CL_TRUE, 0, sizeof(int), grid->numMedical);
             grid->UpdateVAO();
             cout << "\nCancer Cells: " << grid->getNumCancer()<< endl;
             cout << "Medical Cells: " << grid->getNumMedical() << endl;
@@ -742,6 +548,7 @@ int main() {
         }else{
             timer += WindowManager::GetFrameTime();
         }
+        cout << "Time since last frame: " << WindowManager::GetFrameTime() << endl;
         grid->Draw();
         Renderer::EndFrame();
    }while(!WindowManager::ExitWindow());
