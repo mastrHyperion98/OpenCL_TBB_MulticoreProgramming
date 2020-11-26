@@ -38,6 +38,12 @@ int RandNumGen(int min, int max) {
     std::uniform_int_distribution<std::mt19937::result_type> dist(min,max); // dist
     return dist(rng);
 }
+
+void PrintOutput(Grid *grid){
+    cout << "Cancer Cells: " << *grid->numCancer << endl;
+    cout << "Medical Cells: " << *grid->numMedical << endl;
+    cout << "Healthy Cells: " << ((Y_MAX*X_MAX)-*grid->numMedical - *grid->numCancer) << "\n" << endl;
+}
 // check if a cancer cell is to be turned into a healthy cell/
 
 /*
@@ -504,7 +510,7 @@ int main() {
     Renderer::setRenderMode(GL_POINTS);
     Renderer::useShader(0);
 
-    cl::Program program = buildProgram(context, gpu, PROGRAM);
+    cl::Program gpu_program = buildProgram(context, gpu, PROGRAM);
     //create queue to which we will push commands for the device.
     cl::CommandQueue queue(context,gpu);
     glm::mat4 projection = glm::ortho(0.0f, SCREEN_WIDTH*POINT_SIZE, SCREEN_HEIGHT*POINT_SIZE, 0.0f, -1.0f, 1.0f);
@@ -512,13 +518,19 @@ int main() {
 
 
 
-    cl::Kernel mutation=cl::Kernel(program,"mutation_kernel");
-    //cl::Kernel radial_expansion=cl::Kernel(program,"radial_expansion");
+    cl::Kernel mutation=cl::Kernel(gpu_program,"mutation_kernel");
+    cl::Kernel expansion=cl::Kernel(gpu_program,"radial_expansion");
     mutation.setArg(0,grid->vectorArray);
     mutation.setArg(1, X_MAX);
     mutation.setArg(2, Y_MAX);
     mutation.setArg(3,grid->numCancer);
     mutation.setArg(4,grid->numMedical);
+    expansion.setArg(0, grid->vectorArray);
+    expansion.setArg(1, grid->directions);
+    expansion.setArg(2, X_MAX);
+    expansion.setArg(3, Y_MAX);
+    expansion.setArg(4,grid->numCancer);
+    expansion.setArg(5,grid->numMedical);
     grid->CreateVAO();
     float timer=0;
    do{
@@ -527,13 +539,11 @@ int main() {
         Renderer::BeginFrame();
         // set the color
         if(timer >= REFRESH_TIME) {
-            //queue.enqueueWriteBuffer(bufferDirection, CL_TRUE, 0, sizeof(int)*(Y_MAX*X_MAX), grid->directions);
             queue.enqueueNDRangeKernel(mutation,cl::NullRange,cl::NDRange(X_MAX, Y_MAX),cl::NullRange);
+            queue.enqueueNDRangeKernel(expansion,cl::NullRange,cl::NDRange(X_MAX, Y_MAX),cl::NullRange);
             queue.finish();
             grid->UpdateVAO();
-            cout << "Cancer Cells: " << *grid->numCancer << endl;
-            cout << "Medical Cells: " << *grid->numMedical << endl;
-            cout << "Healthy Cells: " << ((Y_MAX*X_MAX)-*grid->numMedical - *grid->numCancer) << endl;
+            PrintOutput(grid);
         }else{
             timer += WindowManager::GetFrameTime();
         }
@@ -543,5 +553,6 @@ int main() {
    }while(!WindowManager::ExitWindow());
     //shutdown the renderer
      Renderer::Shutdown();
+     // delete the grid and unallocate SVM data
      delete grid;
 }

@@ -178,34 +178,39 @@ void kernel mutation_kernel(global float3 *vectorArray,
     }
 }
 
-void kernel radial_expansion(global const float3 *vectorArray,
-                            global const int* direction, 
+
+void kernel radial_expansion(global float3 *vectorArray,
+                            global int* direction, 
                             const int X_MAX,
                             const int Y_MAX,
                             global int *numberMedicalResult,
                             global int *numberCancerResult){
 
-   int x = get_global_id(0);
-   int y = get_global_id(1);
+
+   const int x = get_global_id(0);
+   const int y = get_global_id(1);
    float3 color;
 
-   int mindex = 2*((x*Y_MAX)+(y));
-   color = vectorArray[mindex+1];
-   if(color.x == YELLOW.x && color.y == YELLOW.y && color.z == YELLOW.z){
-      int dir = direction[(x*Y_MAX)+y];
+    int mindex = 2*((x*Y_MAX)+(y));
+    color = vectorArray[mindex+1];
+    int dirIndex =  (x*Y_MAX) + y;
+    int dir = direction[dirIndex];
+    
+    if(color.x == YELLOW.x && color.y == YELLOW.y && color.z == YELLOW.z){
       if(dir == UP){
          if(y > 0){
                int index = 2*((x*Y_MAX)+(y-1));
                color = vectorArray[index+1];
                if(color.x == RED.x && color.y == RED.y && color.z == RED.z){
-                  numberCancerResult = atomic_dec(numberCancerResult);
+                  atomic_dec(numberCancerResult);
                }
                
                vectorArray[index+1] = YELLOW;
                direction[(x*Y_MAX)+(y-1)] = UP;
          }else {
-               numberMedicalResult = atomic_dec(numberMedicalResult);
+               atomic_dec(numberMedicalResult);
          }
+         vectorArray[mindex+1] = GREEN;
       }
       else if(dir == UP_RIGHT){
         if(x < X_MAX && y > 0){
@@ -213,13 +218,14 @@ void kernel radial_expansion(global const float3 *vectorArray,
             
             color = vectorArray[index+1];
             if(color.x == RED.x && color.y == RED.y && color.z == RED.z){
-                  numberCancerResult = atomic_dec(numberCancerResult);
+                atomic_dec(numberCancerResult);
             }
             vectorArray[index+1] = YELLOW;
             direction[((x+1)*Y_MAX)+(y-1)] = UP_RIGHT;
         }else {
-            numberMedicalResult = atomic_dec(numberMedicalResult);
+            atomic_dec(numberMedicalResult);
         }
+        vectorArray[mindex+1] = GREEN;
     }
     else if(dir == UP_LEFT){
         if(x > 0 && y > 0){
@@ -227,81 +233,84 @@ void kernel radial_expansion(global const float3 *vectorArray,
             
             color = vectorArray[index+1];
             if(color.x == RED.x && color.y == RED.y && color.z == RED.z){
-               numberCancerResult = atomic_dec(numberCancerResult);
+               atomic_dec(numberCancerResult);
             }
             vectorArray[index+1] = YELLOW;
             direction[((x-1)*Y_MAX)+(y-1)] = UP_LEFT;
         }else {
-            numberMedicalResult = atomic_dec(numberMedicalResult);
+            atomic_dec(numberMedicalResult);
         }
+        vectorArray[mindex+1] = GREEN;
     }
     else if(dir == RIGHT){
         if(x < X_MAX){
             int index = 2*(((x+1)*Y_MAX)+(y));
             color = vectorArray[index+1];
             if(color.x == RED.x && color.y == RED.y && color.z == RED.z){
-               numberCancerResult = atomic_dec(numberCancerResult);
+               atomic_dec(numberCancerResult);
             }
             vectorArray[index+1] = YELLOW;
             direction[((x+1)*Y_MAX)+(y)] = RIGHT;
         }else {
-            numberMedicalResult = atomic_dec(numberMedicalResult);
+            atomic_dec(numberMedicalResult);
         }
+        vectorArray[mindex+1] = GREEN;
     }
     else if(dir == LEFT){
         if(x > 0){
             int index = 2*(((x-1)*Y_MAX)+(y));
             color = vectorArray[index+1];
             if(color.x == RED.x && color.y == RED.y && color.z == RED.z){
-               numberCancerResult = atomic_dec(numberCancerResult);
+               atomic_dec(numberCancerResult);
             }
             vectorArray[index+1] = YELLOW;
             direction[((x-1)*Y_MAX)+(y)] = LEFT;
         }else {
-            numberMedicalResult = atomic_dec(numberMedicalResult);
+            atomic_dec(numberMedicalResult);
         }
+        vectorArray[mindex+1] = GREEN;
     }
     else if(dir == DOWN){
         if(y < Y_MAX){
             int index = 2*(((x)*Y_MAX)+(y+1));
             color = vectorArray[index+1];
             if(color.x == RED.x && color.y == RED.y && color.z == RED.z){
-               numberCancerResult = atomic_dec(numberCancerResult);
+               atomic_dec(numberCancerResult);
             }
             vectorArray[index+1] = YELLOW;
             direction[((x)*Y_MAX)+(y+1)] = DOWN;
         }else {
-            numberMedicalResult = atomic_dec(numberMedicalResult);
+            atomic_dec(numberMedicalResult);
         }
+        vectorArray[mindex+1] = GREEN;
     }
     else if(dir == DOWN_RIGHT){
         if(x < X_MAX && y < Y_MAX){
             int index = 2*(((x+1)*Y_MAX)+(y+1));
             color = vectorArray[index+1];
             if(color.x == RED.x && color.y == RED.y && color.z == RED.z){
-               numberCancerResult = atomic_dec(numberCancerResult);
+               atomic_dec(numberCancerResult);
             }
             vectorArray[index+1] = YELLOW;
             direction[((x+1)*Y_MAX)+(y+1)] = DOWN_RIGHT;
         }else {
-            numberMedicalResult = atomic_dec(numberMedicalResult);
+            atomic_dec(numberMedicalResult);
         }
+        vectorArray[mindex+1] = GREEN;
     }
     else if(dir == DOWN_LEFT){
         if(x >0 && y < Y_MAX){
             int index = 2*(((x-1)*Y_MAX)+(y+1));
             color = vectorArray[index+1];
             if(color.x == RED.x && color.y == RED.y && color.z == RED.z){
-                  numberCancerResult = atomic_dec(numberCancerResult);
+                atomic_dec(numberCancerResult);
             }
             vectorArray[index+1] = YELLOW;
             direction[((x-1)*Y_MAX)+(y+1)] = DOWN_LEFT;
         }else {
-            numberMedicalResult = atomic_dec(numberMedicalResult);
+            atomic_dec(numberMedicalResult);
         }
-
+        vectorArray[mindex+1] = GREEN;
     }
-     vectorArray[mindex+1] = GREEN;
    }
 }
-

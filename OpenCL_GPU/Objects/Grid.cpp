@@ -30,8 +30,8 @@ Grid::Grid(int x, int y, cl::Context context){
         set.insert(tuple<int,int>(x1,y1));
     }
 
-    vectorArray = arrayAllocator.allocate(sizeof(cl_float3)*(numRows*numCols));
-    directions = new int[numRows*numCols];
+    vectorArray = arrayAllocator.allocate(sizeof(cl_float3)*2*(numRows*numCols));
+    directions = intAllocator.allocate(sizeof(int)*(numRows*numCols));
     for(int i = 0; i < numRows; i++){
         for(int j= 0; j < numCols; j++){
             cl_float3 position = cl_float3{float(i), float(j), 0.0f};
@@ -54,7 +54,7 @@ Grid::Grid(int x, int y, cl::Context context){
 
 Grid::~Grid() {
     arrayAllocator.deallocate(vectorArray,sizeof(cl_float3)*(numRows*numCols));
-    delete directions;
+    intAllocator.deallocate(directions, sizeof(int)*(numRows*numCols));
     intAllocator.deallocate(numCancer, sizeof(int));
     intAllocator.deallocate(numMedical, sizeof(int));
 }
