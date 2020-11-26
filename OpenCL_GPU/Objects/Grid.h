@@ -13,7 +13,6 @@
 #include "glm/glm.hpp"
 #include <mutex>
 #include "CL/cl2.hpp"
-#include "tbb/concurrent_vector.h"
 #define UP 0
 #define UP_RIGHT 1
 #define UP_LEFT 2
@@ -32,16 +31,15 @@ private:
     int numCols;
     GLuint vao = -1;
     GLuint vbo = -1;
-    std::mutex cancerAccess;
-    std::mutex medicalAccess;
-
-
+    cl::Context context;
+    cl::SVMAllocator<cl_float3, cl::SVMTraitFine<cl::SVMTraitReadWrite<>>> arrayAllocator;
+    cl::SVMAllocator<int, cl::SVMTraitFine<cl::SVMTraitReadWrite<>>> intAllocator;
 public:
-    cl_float3* vectorArray;
+    cl_float3 * vectorArray;
     int *directions;
     int *numCancer;
     int *numMedical;
-    Grid(int, int);
+    Grid(int, int, cl::Context);
     ~Grid();
     Grid(const Grid &grid);
     Grid &operator=(const Grid &grid);
@@ -49,16 +47,6 @@ public:
     void UpdateVAO();
     void CreateVAO();
     void Draw();
-    void IncrementCancer();
-    void DecrementCancer();
-    void DecrementMedical();
-    void RemoveFromMedical(int num);
-    void IncremementMedical();
-    void AddMedical(int num);
-    int getNumCancer();
-    int getNumMedical();
-    int getVaoColorIndex(int i, int j){return 2*((i*numCols)+j)+1;}
-    bool float3Equal(cl_float3 obj, cl_float3 other);
 };
 
 

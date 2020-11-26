@@ -19,7 +19,7 @@
 
 using namespace std;
 
-Grid *grid = new Grid(SCREEN_WIDTH, SCREEN_HEIGHT);
+
 int const MUTATION_THRESHOLD = 6; // errors in slide
 int const MUTATION_THRESHOLD_CORNER = 3;
 int const MUTATION_THRESHOLD_EDGE = 4;
@@ -40,7 +40,7 @@ int RandNumGen(int min, int max) {
 }
 // check if a cancer cell is to be turned into a healthy cell/
 
-
+/*
 void Injection(){
     // select a point of injection
     int i =  RandNumGen(0, X_MAX);
@@ -54,7 +54,7 @@ void Injection(){
      * cells. However, a random number is generated to determine the threshold for eligibility. At least one cell will be
      * converted into a medicine cell. However, more than one will be left up to the programs random properties.
      */
-
+/*
     int numberMedical = 0;
     // check if corner
     if ((i == 0 || i == X_MAX) && (j == 0 || j == Y_MAX)) {
@@ -483,13 +483,17 @@ void Injection(){
         }
     }
 }
-
+*/
 int main() {
     // WindowManager and Renderer are classes from my Comp 371 Project that I am re-using here for quick startup/clean code.
     // Both of these classes were written/converted by me and I can prove it through GitHub if necessary!
     // Shader.h is borrowed from LearnOpenGL.com
     std::vector<cl::Platform> platforms;
     cl::Platform::get(&platforms);
+    cl::Device gpu= GetDeviceTarget(CL_DEVICE_TYPE_GPU);
+    cl::Context context = cl::Context(gpu);
+
+    Grid *grid = new Grid(SCREEN_WIDTH, SCREEN_HEIGHT, context);
 
     float const REFRESH_TIME = 1/30.0f;
     int const SIZE = (Y_MAX*X_MAX*2);
@@ -500,33 +504,21 @@ int main() {
     Renderer::setRenderMode(GL_POINTS);
     Renderer::useShader(0);
 
-    cl::Device gpu= GetDeviceTarget(CL_DEVICE_TYPE_GPU);
-    cl::Context context = cl::Context(gpu);
     cl::Program program = buildProgram(context, gpu, PROGRAM);
     //create queue to which we will push commands for the device.
     cl::CommandQueue queue(context,gpu);
-
     glm::mat4 projection = glm::ortho(0.0f, SCREEN_WIDTH*POINT_SIZE, SCREEN_HEIGHT*POINT_SIZE, 0.0f, -1.0f, 1.0f);
     Renderer::getCurrentShader()->setMat4("orthoMatrix", projection);
-    cl::Buffer buffer_vectorArray(context,CL_MEM_READ_WRITE,sizeof(cl_float3)*SIZE);
-    cl::Buffer buffer_numberCancer(context,CL_MEM_READ_WRITE,sizeof(int));
-    cl::Buffer buffer_numberMedical(context,CL_MEM_READ_WRITE,sizeof(int));
-    cl::Buffer bufferResult(context, CL_MEM_READ_WRITE, sizeof(cl_float3) * SIZE);
-    cl::Buffer bufferDirection(context, CL_MEM_READ_WRITE, sizeof(int) * (Y_MAX*X_MAX));
-    cl::Buffer bufferDirectionResult(context, CL_MEM_READ_WRITE, sizeof(int) * (Y_MAX*X_MAX));
-    queue.enqueueWriteBuffer(bufferDirectionResult, CL_TRUE, 0, sizeof(int)*(Y_MAX*X_MAX), grid->directions);
-    queue.enqueueWriteBuffer(bufferResult,CL_TRUE,0,sizeof(cl_float3)*SIZE, grid->vectorArray);
-    queue.enqueueWriteBuffer(buffer_numberCancer,CL_TRUE,0,sizeof(int)*1, grid->numCancer);
-    queue.enqueueWriteBuffer(buffer_vectorArray,CL_TRUE,0,sizeof(cl_float3)*SIZE, grid->vectorArray);
-    queue.enqueueWriteBuffer(buffer_numberMedical,CL_TRUE,0,sizeof(int)*1, grid->numMedical);
+
+
+
     cl::Kernel mutation=cl::Kernel(program,"mutation_kernel");
-    //cl::Kernel cancer_check=cl::Kernel(program,"cancer_check");
     //cl::Kernel radial_expansion=cl::Kernel(program,"radial_expansion");
-    mutation.setArg(0,buffer_vectorArray);
+    mutation.setArg(0,grid->vectorArray);
     mutation.setArg(1, X_MAX);
     mutation.setArg(2, Y_MAX);
-    mutation.setArg(3,buffer_numberCancer);
-    mutation.setArg(4,buffer_numberMedical);
+    mutation.setArg(3,grid->numCancer);
+    mutation.setArg(4,grid->numMedical);
     grid->CreateVAO();
     float timer=0;
    do{
@@ -538,13 +530,10 @@ int main() {
             //queue.enqueueWriteBuffer(bufferDirection, CL_TRUE, 0, sizeof(int)*(Y_MAX*X_MAX), grid->directions);
             queue.enqueueNDRangeKernel(mutation,cl::NullRange,cl::NDRange(X_MAX, Y_MAX),cl::NullRange);
             queue.finish();
-            queue.enqueueReadBuffer(buffer_vectorArray,CL_TRUE,0,sizeof(cl_float3)*SIZE,grid->vectorArray);
-            queue.enqueueReadBuffer(buffer_numberCancer, CL_TRUE, 0, sizeof(int), grid->numCancer);
-            queue.enqueueReadBuffer(buffer_numberMedical, CL_TRUE, 0, sizeof(int), grid->numMedical);
             grid->UpdateVAO();
-            cout << "\nCancer Cells: " << grid->getNumCancer()<< endl;
-            cout << "Medical Cells: " << grid->getNumMedical() << endl;
-            cout << "Healthy Cells: " << ((Y_MAX*X_MAX)-grid->getNumMedical() - grid->getNumCancer()) << endl;
+            cout << "Cancer Cells: " << *grid->numCancer << endl;
+            cout << "Medical Cells: " << *grid->numMedical << endl;
+            cout << "Healthy Cells: " << ((Y_MAX*X_MAX)-*grid->numMedical - *grid->numCancer) << endl;
         }else{
             timer += WindowManager::GetFrameTime();
         }
